@@ -1,0 +1,8 @@
+CompileFlags:
+  Add:  [
+    "-ID:/uni/info_grafica/base/freeglut/include",
+    "-ID:/uni/info_grafica/base/assimp",
+    "-ID:/uni/info_grafica/base/glm",
+    "-ID:/uni/info_grafica/base/glew/include",
+    "-std=c++20"
+  ]
