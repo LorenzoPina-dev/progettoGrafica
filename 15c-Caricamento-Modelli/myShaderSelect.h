@@ -59,11 +59,10 @@ private:
     GLuint TextureSel;
     GLuint depthBuffer;
 
-    GLint _model_transform_location; ///<< Location della variabile Model2World
-    
-    GLint _camera_transform_location; ///<< Location della variabile World2Camera
-    GLint _base_object_id_location;
-    GLint _projection_transform_location;
-    GLint _render_mode_location;
+    GLint _model_transform_location;        ///<< Location della variabile Model2World
+    GLint _camera_transform_location;       ///<< Location della variabile World2Camera
+    GLint _base_object_id_location;         ///<< Location della variabile id base
+    GLint _projection_transform_location;   ///<< Location della variabile projection transform
+    GLint _render_mode_location;            ///<< Location della render mode
 };
 #endif

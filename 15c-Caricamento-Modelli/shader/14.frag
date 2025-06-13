@@ -87,7 +87,7 @@ void main()
 	vec3 view_dir    = normalize(CameraPosition - fragment_position);
 	vec3 reflect_dir = normalize(reflect(DirectionalLight.direction,normal));
 
-	
+	//evidenzio i contorni se selezionato
 	if(abs(dot(view_dir,fragment_normal))<0.1f && Selected)
 		out_color = vec4(1,1,0,1);
 	else{

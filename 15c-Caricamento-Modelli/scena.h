@@ -41,7 +41,6 @@ private:
   float far_plane=100;
 
   bool mostraOverlay;
-  bool Xray=false;
 
   Trasformazione t;
   sceneObject *selectedObject = nullptr;
@@ -49,41 +48,52 @@ private:
   float updateSpeedBasedOnFOV();
   glm::vec3 gestioneTransform(glm::vec3 iniziale, glm::vec2 delta);
 public:
+  //funzioni di gestione generica della scena
   void init();
-  void createScene();
+  void createScene();  
+  void update();
+  void reset();
+  void salvaStato();
+
+  //gestione modalità selezione, assi sistemi di riferimento e trasformazioni
   void set(assi asse);
   void set(SelectionMode selectMode);
   void set(SistemaRiferimento sistemaRiferimento);
   void set(Trasformazione trasformazione);
-  void addObject(sceneObject *o);
-  void removeSelected();
-  void removeObject(sceneObject *o);
-  void removeObject(int o);
-  void render();
-  void renderPicking();
   void toggleOverlay();
   void toggleAsse();
   void toggleSelect();
-  void selectObject();
-  void update();
-  void reset();
+  
+  //gestione oggetti in scena
+  void addObject(sceneObject *o);
+  void removeObject(sceneObject *o);
+  void removeObject(int o);
+
+  //gestione selezione
+  void gestioneSelezione(int x, int y, bool resetSelezione);
+  void setSelection(int id);
+  void removeSelected();
+
+  //render
+  void renderOverlay(int x, int y, std::string messaggio);
+  void render();
+  void renderPicking();
+
+  //settaggi camera
   void setFov(float fov);
-  void addFov(float fov);
   void setNear(float nearPlane);
-  void addNear(float nearPlane);
   void setFar(float farPlane);
+  void addFov(float fov);
+  void addNear(float nearPlane);
   void addFar(float farPlane);
-  void toggleXray();
+
+  //gestori che muovono oggetti o camera in base al mouse
   void gestioneOggetti(int xClick, int yClick, int x, int y);
   void gestioneCamera(int xClick, int yClick, int x, int y,
                       TrasformazioneCamera trasformazione);
   void addSpeedObject(bool verticale, bool add, float speed = 45);
 
-  void spostaSelezionato(int x, int y);
-  void renderOverlay(int x, int y, std::string messaggio);
-  void gestioneSelezione(int x, int y, bool resetSelezione);
-  void salvaStato();
+  //gestione luci
   void addIntensityLight(Light tipo, float valore);
   void subIntensityLight(Light tipo, float valore);
-  void setSelection(int id);
 };

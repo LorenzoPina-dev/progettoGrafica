@@ -59,6 +59,7 @@ glm::vec3 LocalTransform::getRotateVec() const {
     return glm::eulerAngles(_rotation);
 }
 
+
 // TRANSLATION
 void LocalTransform::translate(float x, float y, float z) {
     translate(glm::vec3(x, y, z));
@@ -81,6 +82,7 @@ void LocalTransform::addTranslate(const glm::vec3& offset) {
 glm::vec3 LocalTransform::getTranslate() const {
     return _translation;
 }
+
 
 // SCALING
 void LocalTransform::scale(float sx, float sy, float sz) {
@@ -112,6 +114,7 @@ void LocalTransform::addScale(const glm::vec3& factor) {
 glm::vec3 LocalTransform::getScale() const {
     return _scaling;
 }
+
 
 // TRANSFORMATION MATRIX
 const glm::mat4 LocalTransform::T() {

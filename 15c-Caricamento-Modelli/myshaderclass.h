@@ -83,14 +83,14 @@ private:
     GLint _camera_transform_location; ///<< Location della variabile World2Camera
     GLint _camera_position_location;
 
-    GLint _ambient_color_location; ///<< Location del colore della luce ambientale
-    GLint _ambient_intensity_location; ///<< Location dell'intensità della luce ambientale
-    GLint _directional_color_location;     ///<< Location del colore della luce direzionale
-    GLint _directional_direction_location; ///<< Location della direzione della luce direzionale
-    GLint _diffusive_intensity_location;   ///<< Location dell'intensità della luce diffusiva
-    GLint _specular_intensity_location;
-    GLint _specular_shininess_location;
-    GLint _projection_transform_location;
-    GLint _selected_location;
+    GLint _ambient_color_location;          ///<< Location del colore della luce ambientale
+    GLint _ambient_intensity_location;      ///<< Location dell'intensità della luce ambientale
+    GLint _directional_color_location;      ///<< Location del colore della luce direzionale
+    GLint _directional_direction_location;  ///<< Location della direzione della luce direzionale
+    GLint _diffusive_intensity_location;    ///<< Location dell'intensità della luce diffusiva
+    GLint _specular_intensity_location;     ///<< Location dell'intensità della luce speculare
+    GLint _specular_shininess_location;     ///<< Location dell'shiny della luce speculare
+    GLint _projection_transform_location;   ///<< Location della projection transform
+    GLint _selected_location;               ///<< Location del selettore
 };
 #endif

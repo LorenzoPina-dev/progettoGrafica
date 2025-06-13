@@ -12,10 +12,238 @@
 #include <iterator>
 #include <ostream>
 
+//privato 
+
+float scena::updateSpeedBasedOnFOV() {
+  float minFOV = 0.0f;
+  float maxFOV = 120.0f;
+  float baseSpeed = 0.0f;
+  float maxSpeed = 24.0f;
+  float speedFactor = (fov - minFOV) / (maxFOV - minFOV);
+  // = glm::clamp(speedFactor, 0.0f, 1.0f);
+  return baseSpeed + speedFactor * (maxSpeed - baseSpeed);
+}
+
+glm::vec3 scena::gestioneTransform(glm::vec3 iniziale, glm::vec2 delta) {
+  glm::vec3 newPos = iniziale;
+  switch (asseOperazione) {
+  case assi::x:
+    newPos.x += delta.x;
+    break;
+  case assi::y:
+    newPos.y += delta.y;
+    break;
+  case assi::z:
+    newPos.z += delta.x;
+    break;
+  case assi::xy:
+    newPos.x += delta.x;
+    newPos.y += delta.y;
+    break;
+  case assi::xz:
+    newPos.x += delta.x;
+    newPos.z += delta.y;
+    break;
+  case assi::yz:
+    newPos.z += delta.x;
+    newPos.y += delta.y;
+    break;
+  default:
+    newPos += glm::vec3(delta.x, delta.y, 0);
+    break;
+  }
+  return newPos;
+}
+
+
+
+//metodi pubblici
+
+void scena::init() {
+
+  glutInitContextVersion(4, 6);
+  glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGBA | GLUT_DEPTH);
+  glewExperimental = GL_TRUE;
+
+  glutInitWindowSize(WINDOW_WIDTH, WINDOW_HEIGHT);
+  glutInitWindowPosition(100, 100);
+  glutCreateWindow("Informatica Grafica");
+
+  glutSetCursor(GLUT_CURSOR_LEFT_ARROW);
+
+  glutWarpPointer(WINDOW_WIDTH / 2, WINDOW_HEIGHT / 2);
+
+  // Must be done after glut is initialized!
+  GLenum res = glewInit();
+  if (res != GLEW_OK) {
+    std::cerr << "Error : " << glewGetErrorString(res) << std::endl;
+    exit(1);
+  }
+
+  glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
+}
+
+// Inizializza la scena e gli shader
+void scena::createScene() {
+  reset();
+
+  // Inizializza e attiva gli shader
+  myshaders.init();
+  myshaders.enable();
+  myshaderWire.init();
+  myshaderWire.enable();
+  selection_shader.init();
+  selection_shader.enable();
+}
+
+void scena::update() {
+  auto now = std::chrono::high_resolution_clock::now();
+  float deltaTime =
+      std::chrono::duration<float, std::milli>(now - lastFrameTime).count();
+  lastFrameTime = now;
+  for (sceneObject *o : objects)
+    o->update(deltaTime / 1000);
+  camera.update(/*deltaTime / 1000*/);
+}
+
+void scena::reset() {
+  camera.reset();
+  fov = 30.0f;
+  near_plane = 0.1f;
+  far_plane = 100;
+  camera.set_perspective(fov, WINDOW_WIDTH, WINDOW_HEIGHT, near_plane,
+                         far_plane);
+  for (sceneObject *o : objects) {
+    o->reset();
+  }
+
+  ambient_light = AmbientLight(glm::vec3(1, 1, 1), 0.2);
+  directional_light =
+      DirectionalLight(glm::vec3(1, 1, 1), glm::vec3(0, 0, -1)); // 0.5
+  diffusive_light = DiffusiveLight(0.5);                         // 0.5
+  specular_light = SpecularLight(0.5, 30);
+}
+
+void scena::salvaStato() {
+  if (selectedObject == nullptr)
+    return;
+  selectedObject->saveState();
+}
+
+
+//gestione enum
+void scena::set(SistemaRiferimento sistemaRiferimento) {
+  this->riferimento = sistemaRiferimento;
+}
+void scena::set(assi assi) {
+  if (assi == asseOperazione)
+    toggleAsse();
+  this->asseOperazione = assi;
+}
+void scena::set(Trasformazione trasformazione) { this->t = trasformazione; }
+void scena::set(SelectionMode selectMode) { mode = selectMode; }
+
+void scena::toggleAsse() {
+  std::cout << "toggle Asse: " << riferimento << std::endl;
+  riferimento = (SistemaRiferimento)((riferimento + 1) % 3);
+}
+void scena::toggleOverlay() { mostraOverlay = !mostraOverlay; }
+
+void scena::toggleSelect() {
+
+  if (mode == SelectionMode::ALL) {
+    if (selectedObject == nullptr)
+      setSelection(0);
+    mode = SelectionMode::VERTEX;
+    for (sceneObject *obj : objects)
+      obj->setEditMode(true);
+  } else {
+    mode = SelectionMode::ALL;
+    for (sceneObject *obj : objects)
+      obj->setEditMode(false);
+  }
+}
+
+
+//gestione object nella scena
+void scena::addObject(sceneObject *o) { objects.push_back(o); }
+
+void scena::removeObject(sceneObject *o) {
+  int pos = std::distance(objects.begin(),
+                          std::find(objects.begin(), objects.end(), o));
+  objects.erase(objects.cbegin() + pos);
+}
+
+void scena::removeObject(int o) { objects.erase(objects.cbegin() + o); }
+
+
+
+void scena::gestioneSelezione(int x, int y, bool resetSelezione) {
+
+  renderPicking();
+  // GLuint id = ReadPixelID(x, y);
+  selection_shader.bindTexture();
+  glm::uvec4 pixelData;
+  int height = glutGet(GLUT_WINDOW_HEIGHT);
+  int width = glutGet(GLUT_WINDOW_WIDTH);
+  glReadPixels(x, height - 1 - y, // Pixel coordinates (bottom-left origin)
+               1, 1,              // Width/height (1x1 pixel)
+               GL_RGBA_INTEGER,   // Critical for integer textures
+               GL_UNSIGNED_INT,   // Matches texture format
+               &pixelData         // Output storage
+  );
+  glBindFramebuffer(GL_FRAMEBUFFER, 0);
+
+  unsigned int idObject = pixelData.r;
+  unsigned int idVertex = pixelData.g;
+  unsigned int idEdge = pixelData.b;
+  unsigned int idFace = pixelData.a;
+  std::cout << "Coordinate cliccate: (" << x << ", " << y << ")" << std::endl;
+  std::cout << "ID letto: (" << idObject << " , " << idVertex << " , " << idEdge
+            << " , " << idFace << ")" << std::endl;
+
+  if (selectedObject != nullptr) {
+    selectedObject->setSelected(false);
+  }
+  if (idObject <= objects.size() && idObject > 0) {
+    setSelection(idObject - 1);
+    if (resetSelezione) {
+      selectedObject->clearSelection();
+    }
+    selectedObject->gestioneSelezione(pixelData, mode);
+  } else if (mode == SelectionMode::ALL)
+    selectedObject = nullptr;
+
+  if (selectedObject != nullptr)
+    selectedObject->setSelected(true);
+
+  if (selectedObject != nullptr) {
+    std::cout << "Oggetto selezionato: " << typeid(*selectedObject).name()
+              << std::endl;
+  } else {
+    std::cout << "Nessun oggetto selezionato (cliccato su sfondo)" << std::endl;
+  }
+}
+
+void scena::setSelection(int id) {
+  selectedObject = objects[id];
+  camera.setTarget(selectedObject->getTranslation());
+}
+
+void scena::removeSelected() {
+  if (selectedObject == nullptr)
+    return;
+  removeObject(selectedObject);
+  selectedObject = nullptr;
+}
+
+
+
+// Funzione per disegnare un overlay 2D con testo sopra la scena 3D
 void scena::renderOverlay(int x, int y, std::string messaggio) {
 
-  glDisable(GL_DEPTH_TEST);
-  glUseProgram(0);
+  glDisable(GL_DEPTH_TEST);// Disabilita depth test per il rendering 2D
+  glUseProgram(0); // Usa pipeline fissa per scrivere testo
 
   // Salva attributi e matrici
   glPushAttrib(GL_ENABLE_BIT | GL_COLOR_BUFFER_BIT | GL_CURRENT_BIT);
@@ -23,16 +251,19 @@ void scena::renderOverlay(int x, int y, std::string messaggio) {
   glMatrixMode(GL_PROJECTION);
   glPushMatrix();
   glLoadIdentity();
-  glOrtho(0, WINDOW_WIDTH, 0, WINDOW_HEIGHT, -1, 1);
+  glOrtho(0, WINDOW_WIDTH, 0, WINDOW_HEIGHT, -1, 1);// Proiezione ortogonale
 
   glMatrixMode(GL_MODELVIEW);
   glPushMatrix();
   glLoadIdentity();
 
-  glColor3f(1.0f, 1.0f, 1.0f);
+  glColor3f(1.0f, 1.0f, 1.0f); // Colore bianco del testo
 
   glRasterPos2f(x, y);
 
+
+  
+  // Gestione nuove righe nel messaggio
   int lineSpacing = 14; // Altezza del font circa per GLUT_BITMAP_HELVETICA_12
   int startX = x;
   int startY = y;
@@ -57,36 +288,6 @@ void scena::renderOverlay(int x, int y, std::string messaggio) {
   // Riabilita depth test e shader
   glEnable(GL_DEPTH_TEST);
   myshaders.enable();
-}
-
-void scena::createScene() {
-  reset();
-
-  myshaders.init();
-  myshaders.enable();
-  myshaderWire.init();
-  myshaderWire.enable();
-  selection_shader.init();
-  selection_shader.enable();
-}
-void scena::set(assi assi) {
-  if (assi == asseOperazione)
-    toggleAsse();
-  this->asseOperazione = assi;
-}
-void scena::set(SistemaRiferimento sistemaRiferimento) {
-  this->riferimento = sistemaRiferimento;
-}
-void scena::set(Trasformazione trasformazione) { this->t = trasformazione; }
-void scena::set(SelectionMode selectMode) { mode = selectMode; }
-void scena::addObject(sceneObject *o) { objects.push_back(o); }
-
-void scena::removeObject(int o) { objects.erase(objects.cbegin() + o); }
-
-void scena::removeObject(sceneObject *o) {
-  int pos = std::distance(objects.begin(),
-                          std::find(objects.begin(), objects.end(), o));
-  objects.erase(objects.cbegin() + pos);
 }
 
 void scena::render() {
@@ -131,12 +332,12 @@ void scena::render() {
 
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
     // Cambia la modalità di wireframe: 0=vertici, 1=spigoli, 2=facce
-    myshaderWire.set_render_mode(mode); // <-- scegli qui dinamicamente se vuoi
-
+    myshaderWire.set_render_mode(mode); 
     myshaderWire.set_model_transform(selectedObject->getTransform().T());
-    // o->render();
+
+    //render wireframe
     glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
-    selectedObject->render(); // Nuovo metodo (vedi punto 4)
+    selectedObject->render(); 
     glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
     selectedObject->render();
     glPointSize(5.0f); // Margine d’errore nel click
@@ -236,82 +437,6 @@ void scena::renderPicking() {
   glBindFramebuffer(GL_FRAMEBUFFER, 0);
 }
 
-void scena::init() {
-
-  glutInitContextVersion(4, 6);
-  glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGBA | GLUT_DEPTH);
-  glewExperimental = GL_TRUE;
-
-  glutInitWindowSize(WINDOW_WIDTH, WINDOW_HEIGHT);
-  glutInitWindowPosition(100, 100);
-  glutCreateWindow("Informatica Grafica");
-
-  glutSetCursor(GLUT_CURSOR_LEFT_ARROW);
-
-  glutWarpPointer(WINDOW_WIDTH / 2, WINDOW_HEIGHT / 2);
-
-  // Must be done after glut is initialized!
-  GLenum res = glewInit();
-  if (res != GLEW_OK) {
-    std::cerr << "Error : " << glewGetErrorString(res) << std::endl;
-    exit(1);
-  }
-
-  glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
-}
-void scena::update() {
-  auto now = std::chrono::high_resolution_clock::now();
-  float deltaTime =
-      std::chrono::duration<float, std::milli>(now - lastFrameTime).count();
-  lastFrameTime = now;
-  for (sceneObject *o : objects)
-    o->update(deltaTime / 1000);
-  camera.update(/*deltaTime / 1000*/);
-}
-
-void scena::toggleAsse() {
-  std::cout << "toggle Asse: " << riferimento << std::endl;
-  riferimento = (SistemaRiferimento)((riferimento + 1) % 3);
-}
-void scena::toggleOverlay() { mostraOverlay = !mostraOverlay; }
-
-void scena::toggleSelect() {
-
-  if (mode == SelectionMode::ALL) {
-    if (selectedObject == nullptr)
-      setSelection(0);
-    mode = SelectionMode::VERTEX;
-    for (sceneObject *obj : objects)
-      obj->setEditMode(true);
-  } else {
-    mode = SelectionMode::ALL;
-    for (sceneObject *obj : objects)
-      obj->setEditMode(false);
-  }
-}
-
-void scena::setSelection(int id) {
-  selectedObject = objects[id];
-  camera.setTarget(selectedObject->getTranslation());
-}
-
-void scena::reset() {
-  camera.reset();
-  fov = 30.0f;
-  near_plane = 0.1f;
-  far_plane = 100;
-  camera.set_perspective(fov, WINDOW_WIDTH, WINDOW_HEIGHT, near_plane,
-                         far_plane);
-  for (sceneObject *o : objects) {
-    o->reset();
-  }
-
-  ambient_light = AmbientLight(glm::vec3(1, 1, 1), 0.2);
-  directional_light =
-      DirectionalLight(glm::vec3(1, 1, 1), glm::vec3(0, 0, -1)); // 0.5
-  diffusive_light = DiffusiveLight(0.5);                         // 0.5
-  specular_light = SpecularLight(0.5, 30);
-}
 
 void scena::setFov(float fov) {
   if (fov < 5)
@@ -321,13 +446,6 @@ void scena::setFov(float fov) {
   camera.set_perspective(fov, WINDOW_WIDTH, WINDOW_HEIGHT, 0.1, 100);
   this->fov = fov;
 }
-void scena::setFar(float farPlane) {
-  if (farPlane < near_plane)
-    farPlane = near_plane + 1;
-  camera.set_perspective(fov, WINDOW_WIDTH, WINDOW_HEIGHT, near_plane,
-                         farPlane);
-  this->far_plane = farPlane;
-}
 void scena::setNear(float nearPlane) {
   if (nearPlane > far_plane)
     nearPlane = far_plane - 1;
@@ -335,20 +453,19 @@ void scena::setNear(float nearPlane) {
                          far_plane);
   this->near_plane = nearPlane;
 }
+void scena::setFar(float farPlane) {
+  if (farPlane < near_plane)
+    farPlane = near_plane + 1;
+  camera.set_perspective(fov, WINDOW_WIDTH, WINDOW_HEIGHT, near_plane,
+                         farPlane);
+  this->far_plane = farPlane;
+}
 
 void scena::addFov(float fov) { setFov(this->fov + fov); }
 void scena::addNear(float nearPlane) { setNear(this->near_plane + nearPlane); }
 void scena::addFar(float farPlane) { setFar(this->far_plane + farPlane); }
 
-float scena::updateSpeedBasedOnFOV() {
-  float minFOV = 0.0f;
-  float maxFOV = 120.0f;
-  float baseSpeed = 0.0f;
-  float maxSpeed = 24.0f;
-  float speedFactor = (fov - minFOV) / (maxFOV - minFOV);
-  // = glm::clamp(speedFactor, 0.0f, 1.0f);
-  return baseSpeed + speedFactor * (maxSpeed - baseSpeed);
-}
+
 
 void scena::gestioneOggetti(int xClick, int yClick, int x, int y) {
   float scala = updateSpeedBasedOnFOV();
@@ -357,10 +474,7 @@ void scena::gestioneOggetti(int xClick, int yClick, int x, int y) {
 
   glm::mat4 viewMatrix = camera.camera(); // view matrix
   glm::mat4 invView = glm::inverse(viewMatrix);
-  /*glm::vec3 right = glm::normalize(glm::vec3(invView[0]));  // X cam
-  glm::vec3 up    = glm::normalize(glm::vec3(invView[1]));  // Y cam
-  glm::vec3 forward = -glm::normalize(glm::vec3(invView[2])); // Z cam (verso
-  avanti)*/
+
   glm::vec3 forward = glm::normalize(glm::vec3(invView[2]));
   glm::vec3 right = glm::normalize(
       glm::cross(glm::vec3(0, 1, 0), forward)); // up globale è (0,1,0)
@@ -435,52 +549,6 @@ void scena::gestioneCamera(int xClick, int yClick, int x, int y,
   glutPostRedisplay();
 }
 
-void scena::gestioneSelezione(int x, int y, bool resetSelezione) {
-
-  renderPicking();
-  // GLuint id = ReadPixelID(x, y);
-  selection_shader.bindTexture();
-  glm::uvec4 pixelData;
-  int height = glutGet(GLUT_WINDOW_HEIGHT);
-  int width = glutGet(GLUT_WINDOW_WIDTH);
-  glReadPixels(x, height - 1 - y, // Pixel coordinates (bottom-left origin)
-               1, 1,              // Width/height (1x1 pixel)
-               GL_RGBA_INTEGER,   // Critical for integer textures
-               GL_UNSIGNED_INT,   // Matches texture format
-               &pixelData         // Output storage
-  );
-  glBindFramebuffer(GL_FRAMEBUFFER, 0);
-
-  unsigned int idObject = pixelData.r;
-  unsigned int idVertex = pixelData.g;
-  unsigned int idEdge = pixelData.b;
-  unsigned int idFace = pixelData.a;
-  std::cout << "Coordinate cliccate: (" << x << ", " << y << ")" << std::endl;
-  std::cout << "ID letto: (" << idObject << " , " << idVertex << " , " << idEdge
-            << " , " << idFace << ")" << std::endl;
-
-  if (selectedObject != nullptr) {
-    selectedObject->setSelected(false);
-  }
-  if (idObject <= objects.size() && idObject > 0) {
-    setSelection(idObject - 1);
-    if (resetSelezione) {
-      selectedObject->clearSelection();
-    }
-    selectedObject->gestioneSelezione(pixelData, mode);
-  } else if (mode == SelectionMode::ALL)
-    selectedObject = nullptr;
-
-  if (selectedObject != nullptr)
-    selectedObject->setSelected(true);
-
-  if (selectedObject != nullptr) {
-    std::cout << "Oggetto selezionato: " << typeid(*selectedObject).name()
-              << std::endl;
-  } else {
-    std::cout << "Nessun oggetto selezionato (cliccato su sfondo)" << std::endl;
-  }
-}
 
 void scena::addSpeedObject(bool verticale, bool add, float speed) {
   if (selectedObject == nullptr)
@@ -496,12 +564,6 @@ void scena::addSpeedObject(bool verticale, bool add, float speed) {
   else
     v.y += delta;
   selectedObject->setRotationSpeed(v);
-}
-
-void scena::salvaStato() {
-  if (selectedObject == nullptr)
-    return;
-  selectedObject->saveState();
 }
 
 void scena::addIntensityLight(Light tipo, float valore) {
@@ -535,42 +597,4 @@ void scena::subIntensityLight(Light tipo, float valore) {
     specular_light.dec(valore);
     break;
   }
-}
-
-void scena::removeSelected() {
-  if (selectedObject == nullptr)
-    return;
-  removeObject(selectedObject);
-  selectedObject = nullptr;
-}
-
-glm::vec3 scena::gestioneTransform(glm::vec3 iniziale, glm::vec2 delta) {
-  glm::vec3 newPos = iniziale;
-  switch (asseOperazione) {
-  case assi::x:
-    newPos.x += delta.x;
-    break;
-  case assi::y:
-    newPos.y += delta.y;
-    break;
-  case assi::z:
-    newPos.z += delta.x;
-    break;
-  case assi::xy:
-    newPos.x += delta.x;
-    newPos.y += delta.y;
-    break;
-  case assi::xz:
-    newPos.x += delta.x;
-    newPos.z += delta.y;
-    break;
-  case assi::yz:
-    newPos.z += delta.x;
-    newPos.y += delta.y;
-    break;
-  default:
-    newPos += glm::vec3(delta.x, delta.y, 0);
-    break;
-  }
-  return newPos;
 }
