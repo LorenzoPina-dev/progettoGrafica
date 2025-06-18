@@ -1,6 +1,6 @@
 #include "marius.h"
 #include "../common.h"
-#include "../../base/assimp/assimp/postprocess.h" // Assimp post processing flags
+#include "../../base/assimp/assimp/postprocess.h"
 #include "alfaObject.h"
  
 Marius::Marius(scena& s) {

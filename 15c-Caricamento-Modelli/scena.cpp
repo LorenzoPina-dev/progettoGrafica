@@ -1,6 +1,6 @@
 #include "scena.h"
 #include "../base/freeglut/include/GL/freeglut.h"
-#include "../base/glew/include/GL/glew.h" // prima di freeglut
+#include "../base/glew/include/GL/glew.h" 
 #include "../base/glm/glm/glm.hpp"
 #include "../base/glm/glm/gtc/matrix_transform.hpp"
 #include <algorithm>
@@ -20,7 +20,6 @@ float scena::updateSpeedBasedOnFOV() {
   float baseSpeed = 0.0f;
   float maxSpeed = 24.0f;
   float speedFactor = (fov - minFOV) / (maxFOV - minFOV);
-  // = glm::clamp(speedFactor, 0.0f, 1.0f);
   return baseSpeed + speedFactor * (maxSpeed - baseSpeed);
 }
 
@@ -73,7 +72,6 @@ void scena::init() {
 
   glutWarpPointer(WINDOW_WIDTH / 2, WINDOW_HEIGHT / 2);
 
-  // Must be done after glut is initialized!
   GLenum res = glewInit();
   if (res != GLEW_OK) {
     std::cerr << "Error : " << glewGetErrorString(res) << std::endl;
@@ -118,9 +116,8 @@ void scena::reset() {
   }
 
   ambient_light = AmbientLight(glm::vec3(1, 1, 1), 0.2);
-  directional_light =
-      DirectionalLight(glm::vec3(1, 1, 1), glm::vec3(0, 0, -1)); // 0.5
-  diffusive_light = DiffusiveLight(0.5);                         // 0.5
+  directional_light = DirectionalLight(glm::vec3(1, 1, 1), glm::vec3(0, 0, -1));
+  diffusive_light = DiffusiveLight(0.5);                         
   specular_light = SpecularLight(0.5, 30);
 }
 
@@ -476,8 +473,7 @@ void scena::gestioneOggetti(int xClick, int yClick, int x, int y) {
   glm::mat4 invView = glm::inverse(viewMatrix);
 
   glm::vec3 forward = glm::normalize(glm::vec3(invView[2]));
-  glm::vec3 right = glm::normalize(
-      glm::cross(glm::vec3(0, 1, 0), forward)); // up globale è (0,1,0)
+  glm::vec3 right = glm::normalize(glm::cross(glm::vec3(0, 1, 0), forward)); // up globale è (0,1,0)
   glm::vec3 up = glm::cross(forward, right);
 
   glm::mat3 assiLocali = glm::mat3(selectedObject->getAssiIniziale());
@@ -505,8 +501,7 @@ void scena::gestioneOggetti(int xClick, int yClick, int x, int y) {
 
     float deltaX = (x - xClick) * sensibilita * scala;
     float deltaY = (y - yClick) * sensibilita * scala;
-    glm::vec3 pos =
-        gestioneTransform(glm::vec3(0.0f), glm::vec2(deltaX, deltaY));
+    glm::vec3 pos =gestioneTransform(glm::vec3(0.0f), glm::vec2(deltaX, deltaY));
     pos = glm::vec3(pos.y, pos.x, pos.z);
 
     if (riferimento == SistemaRiferimento::LOCALE)
@@ -522,14 +517,11 @@ void scena::gestioneOggetti(int xClick, int yClick, int x, int y) {
     glm::vec3 newScale = glm::vec3(1.0f);
 
     if (riferimento == SistemaRiferimento::LOCALE)
-      selectedObject->setScale(
-          gestioneTransform(glm::vec3(1.0f), glm::vec2(delta)), assiLocali);
+      selectedObject->setScale(gestioneTransform(glm::vec3(1.0f), glm::vec2(delta)), assiLocali);
     else if (riferimento == SistemaRiferimento::CAMERA)
-      selectedObject->setScale(
-          gestioneTransform(glm::vec3(1.0f), glm::vec2(delta)), assiCamera);
+      selectedObject->setScale(gestioneTransform(glm::vec3(1.0f), glm::vec2(delta)), assiCamera);
     else
-      selectedObject->setScale(
-          gestioneTransform(glm::vec3(1.0f), glm::vec2(delta)));
+      selectedObject->setScale(gestioneTransform(glm::vec3(1.0f), glm::vec2(delta)));
   }
   glutPostRedisplay();
 }

@@ -94,6 +94,7 @@ public:
       l'id 0 per l'attributo posizione (ATTRIB_POSITIONS)
       l'id 1 per l'attributo vettori normali (ATTRIB_NORMALS)
       l'id 2 per l'attributo coordinate di texture (ATTRIB_COLOR_TEXTURE_COORDS)
+      l'id 3 per l'attributo selezionato (SELECTED)
 
       la TextureUnit 0 per la texture colore (TEXTURE_COLOR).
   */

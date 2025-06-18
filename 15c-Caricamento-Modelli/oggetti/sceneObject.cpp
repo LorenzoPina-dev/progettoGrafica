@@ -141,19 +141,17 @@ std::vector<unsigned int> sceneObject::getCurrentlySelectedVertices() const {
 
 //metodo per deselezionare tutti i vertici e pulire le mappe contenendo le occorrenze 
 void sceneObject::clearSelection() {
-    for (auto& v : vertexSelectionCount) {
-        m.setSelected(v.first, false);
-    }
-    
-    for (auto& v : edgeSelectionCount) {
-        m.setSelected(v.first.first, false);
-        m.setSelected(v.first.second, false);
-    }
-    
     for (auto& v : faceSelectionCount) {
         std::array<unsigned int, 3> idVertexs=m.getFaceVertexIndices(v.first);
         for(unsigned int id:idVertexs)
             m.setSelected(id, false);
+    }
+    for (auto& v : edgeSelectionCount) {
+        m.setSelected(v.first.first, false);
+        m.setSelected(v.first.second, false);
+    }
+    for (auto& v : vertexSelectionCount) {
+        m.setSelected(v.first, false);
     }
     vertexSelectionCount.clear();
     edgeSelectionCount.clear();
@@ -164,7 +162,10 @@ void sceneObject::clearSelection() {
 //funzione per effettuare traslazioni automatiche, dato il deltaTime permette di aggiornare rotazione, traslazione e scale automatico
 void sceneObject::update(float deltaTime) {
     if (editMode && !vertexSelectionCount.empty()) {
-        LocalTransform t;
+
+        //setup per rotazioni automatiche anche in edit mode ma scelta di non inserirlo in quanto troppo confusionario
+
+        /*LocalTransform t;
 
         if (glm::length2(translationSpeed) > 0.0f)
             t.addTranslate(translationSpeed * deltaTime);
@@ -185,7 +186,7 @@ void sceneObject::update(float deltaTime) {
 
             //m.addTransformationToVertices(getCurrentlySelectedVertices(), finalTransform);
             //m.saveState();
-        }
+        }*/
 
     } else {
         if (glm::length2(translationSpeed) > 0.0f)
@@ -212,6 +213,8 @@ void sceneObject::setEditMode(bool enable) {
 bool sceneObject::isEditMode() const {
     return editMode;
 }
+
+//gestione di traslazione
 void sceneObject::setTranslation(const glm::vec3& pos,const glm::mat3 &axes) {
     glm::vec3 translationSistema=axes*pos;
     if (editMode && !vertexSelectionCount.empty()) {
@@ -240,6 +243,14 @@ void sceneObject::addTranslation(const glm::vec3& pos,const glm::mat3 &axes) {
         transform.addTranslate(translationSistema);
     }
 }
+
+glm::vec3 sceneObject::getTranslation() const
+{
+    return transform.getTranslate();
+}
+
+
+//gestione rotazione
 
 void sceneObject::setRotation(const glm::vec3& angles,const glm::mat3 &axes) {
     glm::vec3 rotationSistema=axes*angles*glm::inverse(axes);
@@ -274,6 +285,12 @@ void sceneObject::addRotation(float angleX, float angleY, float angleZ,const glm
     addRotation(glm::vec3(angleX, angleY, angleZ),axes);
 }
 
+glm::vec3 sceneObject::getRotation() const
+{
+    return transform.getRotateVec();
+}
+
+//gestione scale
 void sceneObject::setScale(const glm::vec3& scale,const glm::mat3 &axes) {
     glm::vec3 scaleSistema=axes*scale*glm::inverse(axes);
     if (editMode && !vertexSelectionCount.empty()) {
@@ -302,15 +319,16 @@ void sceneObject::addScale(const glm::vec3& scale,const glm::mat3 &axes) {
     }
 }
 
-
-LocalTransform& sceneObject::getTransform() {
-    return transform;
-}
-
-glm::vec3 sceneObject::getRotation() const
+glm::vec3 sceneObject::getScale() const
 {
-    return transform.getRotateVec();
+    return transform.getScale();
 }
+
+
+
+
+//gestione trasformazioni automatiche
+
 void sceneObject::setRotationSpeed(const glm::vec3 &v)
 {
     this->velocitaAngolare = v;
@@ -348,19 +366,16 @@ void sceneObject::redTranslationSpeed(const glm::vec3 &speed)
     //std::cout<<"spped"<<translationSpeed.x<<" "<<translationSpeed.y<<std::endl;
 }
 
-glm::vec3 sceneObject::getTranslation() const
-{
-    return transform.getTranslate();
-}
-
 void sceneObject::setScaleSpeed(const glm::vec3& scale){
     scaleSpeed=scale;
 }
 
-glm::vec3 sceneObject::getScale() const
-{
-    return transform.getScale();
+
+
+LocalTransform& sceneObject::getTransform() {
+    return transform;
 }
+
 
 bool sceneObject::getSelected() const
 {

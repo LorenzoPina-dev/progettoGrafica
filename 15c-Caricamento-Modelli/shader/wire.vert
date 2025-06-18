@@ -11,5 +11,5 @@ uniform mat4 ProjectionMatrix;
 
 void main() {
     gl_Position = vec4(position, 1.0);
-    vSelected=selectedFlag;//selected[gl_VertexID];
+    vSelected=selectedFlag;
 }

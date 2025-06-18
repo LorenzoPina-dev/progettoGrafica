@@ -16,8 +16,8 @@ flat in uint vVertexID[];
 // ID finale da passare al fragment shader (per picking o visualizzazione)
 flat out uvec4 FinalId;
 
-uniform vec2 viewport_size=vec2(1024, 768);    // da passare da CPU: (width, height)
-uniform float margin = 0.7;   // in pixels
+uniform vec2 viewport_size=vec2(1024, 768);   
+uniform float margin = 0.7; 
 
 // Trasforma da clip-space a coordinate schermo in pixel
 vec2 to_screen(vec4 clip) {
